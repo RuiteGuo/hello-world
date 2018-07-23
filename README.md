@@ -1,17 +1,17 @@
 md
-曹泰铭(潇铭) <taiming.caotaiming@alibaba-inc.com>
-Today, 4:30 AM
-Ruite Guo
-# PouchContainer 支持 LXCFS 实现高可靠容器隔离
 
-## 引言
-PouchContainer 是 Alibaba 开源的一款容器运行时产品，当前最新版本是 0.3.0，代码地址位于：[https://github.com/alibaba/pouch](https://github.com/alibaba/pouch)。PouchContainer 从设计之初即支持 LXCFS，实现高可靠容器隔离。Linux 使用 cgroup 技术实现资源隔离，然而容器内仍然挂载宿主机的 /proc 文件系统，用户在容器内读取 /proc/meminfo 等文件时，获取的是宿主机的信息。容器内缺少的 `/proc 视图隔离`会带来一系列的问题，进而拖慢或阻碍企业业务容器化。LXCFS ([https://github.com/lxc/lxcfs](https://github.com/lxc/lxcfs)) 是开源 FUSE 文件系统，用以解决 `/proc 视图隔离`问题，使容器在表现层上更像传统的虚拟机。本文首先介绍 LXCFS 适用业务场景，然后简要介绍 LXCFS 在 PouchContainer 内部集成的工作。
+# PouchContainer supporting LXCFS to achieve high-reliability container isolation
 
-## LXCFS 业务场景
-在物理机和虚拟机时代，公司内部逐渐形成了自己的一套工具链，诸如编译打包、应用部署、统一监控等，这些工具已经为部署在物理机和虚拟机中的应用提供了稳定的服务。接下来将从监控、运维工具、应用部署等方面详细阐述 LXCFS 在上述业务容器化过程中发挥的作用。
+## Introduction
+PouchContainer is an open-source runtime container software developed by Alibaba. The latest released version is 0.3.0, located at [https://github.com/alibaba/pouch](https://github.com/alibaba/pouch). PouchContainer is designed to support LXCFS to realize highly reliable container separation. While Linux adopted cgroup technology to realize resource separation, the problem that users obtain host information when trying to read files in /proc/meminfo/, caused by host machine's file system still mounting in container, remains unresolved. The lack of `/proc view isolation` will cause a series of problems such as stalling or obstructing enterprise business containerization. LXCFS ([https://github.com/lxc/lxcfs](https://github.com/lxc/lxcfs)) is an open-source file system solution for resolving `/proc view isolation` issue, making the container acting like a traditional virtual machine in presentation layer. This article will first introduce the appropriate business scene for LXCFS and then introduce how LXCFS works in PouchContainer. 
 
-### 监控和运维工具
-大部分的监控工具，依赖 /proc 文件系统获取系统信息。以阿里巴巴为例，阿里巴巴的部分基础监控工具是通过 tsar（[https://github.com/alibaba/tsar](https://github.com/alibaba/tsar)) 收集信息。而 tsar 对内存、CPU 信息的收集，依赖 /proc 文件系统。我们可以下载 tsar 的源码，查看 tsar 对 /proc 目录下一些文件的使用：
+
+## LXCFS Business Scene
+In the age of physical machine and virtual machine, the Alibaba developed a internal toolbox including compiler packing, application deployment, unified monitoring. These tools have been providing stable services for applications that deploy physical machines and virtual machines. 
+
+
+### Monitoring and Operational tools
+Most monitoring tools rely on the /proc file system to retrieve system information. In the example of Alibaba, part of the infrastructural monitoring tools collect informations through tsar（[https://github.com/alibaba/tsar](https://github.com/alibaba/tsar)). However, collecting memory and CPU information in tsar depends on /proc file system. We can download tsar source code to learn how tsar uses files under /proc. 
 
 ```
 $ git remote -v
@@ -35,20 +35,21 @@ $ grep -r diskstats .
 ./modules/mod_io.c:    handle_error("Can't open /proc/diskstats", !iofp);
 ```
 
-可以看到，tsar 对进程、IO、CPU 的监控都依赖 /proc 文件系统。
+It is obvious that tsar's monitoring of process, IO, and cpu relies on /proc file system. 
 
-当容器内 /proc 文件系统提供的是宿主机资源信息时，这类监控不能监控容器内信息。为了满足业务需求，需要适配容器监控，甚至需要单独为容器内监控开发另一套监控工具。这种改变势必会拖慢甚至阻碍企业现存业务容器化的步伐，容器技术要尽可能兼容公司原有的工具链，兼顾工程师的使用习惯。
+When the information provided by /proc file system is from host machine, these monitorings cannot monitor the information in container. To satisfy business demand to appropriate container monitoring, it is even nessary to develop another set of monitoring tools specifically for a container. This issue will, in nature, stall or even obstruct the containerization of enterprise existing business. Therefore, container technology must have the compatibility of original existing monitoring tools to avoid develop new tools everytime and preserve nice user interface that customs to Engineers' user habits. 
 
-PouchContainer 支持 LXCFS 可以解决上述问题，依赖 /proc 文件系统的监控、运维工具，部署在容器内或宿主机上对工具是透明的，现存监控、运维工具无需适配或重新开发，即可平滑迁移到容器内，实现容器内的监控和运维。
+PouchContainer is a tool that support LXCFS and get rid of issues listed above. PouchContainer resolves listed issues by transparentizing the monitoring and operational tools that depend on /proc file system deployed in container or on the host. Existing monitoring and operational tools will be able to transition into container to achieve in-container monitoring and operations without appropriating structure or re-developing.
 
-接下来让我们从实例中直观感受一下，在一台 Ubuntu 虚拟机中安装 PouchContainer 0.3.0 :
+Next, let's see from an example of installing PouchContainer 0.3.0 in Ubuntu:
+
 
 ```
 # uname -a
 Linux p4 4.13.0-36-generic #40~16.04.1-Ubuntu SMP Fri Feb 16 23:25:58 UTC 2018 x86_64 x86_64 x86_64 GNU/Linux
 ```
 
-systemd 拉起 pouchd ，默认不开启 LXCFS，此时创建的容器无法使用 LXCFS 的功能，我们看一下容器内相关 /proc 文件的内容：
+systemd invoke pouchd in default mode that does not start LXCFS. Now, the created container cannot use LXCFS functionalities. Let's see the contents under /proc in container:
 
 ```
 # systemctl start pouch
@@ -71,9 +72,9 @@ Cached:           433928 kB
 2594376.56 2208749.32
 ```
 
-可以看到，在容器内看到的 /proc/meminfo、uptime 文件的输出与宿主机一致，虽然启动容器的时候指定了内存为 50M，/proc/meminfo 文件并未体现出容器内的内存限制。
+It is obvious to see the consistency between the outputs from /proc/meminfo、uptime files and those from the host machine. Although we designated 50 M memory in start time, /proc/meminfo files does not demonstrate the memory limit in containers. 
 
-在宿主机内启动 LXCFS 服务，手动拉起 pouchd 进程，并指定相应的 LXCFS 相关参数：
+Starting LXCFS service inside the host machine, manually invoking pouchd process and designating related relative LXCFS parameters:
 
 ```
 # systemctl start lxcfs
@@ -99,7 +100,7 @@ Cached:                4 kB
 10.00 10.00
 ```
 
-使用 LXCFS 启动的容器，读取容器内 /proc 文件，可以得到容器内的相关信息。
+Using LXCFS started container and reading in-container /proc files to obtain relative information in container.
 
 ### 业务应用
 对于大部分对系统依赖较强的应用，应用的启动程序需要获取系统的内存、CPU 等相关信息，从而进行相应的配置。当容器内的 /proc 文件无法准确反映容器内资源的情况，会对上述应用造成不可忽视的影响。
