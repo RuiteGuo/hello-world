@@ -37,9 +37,9 @@ $ grep -r diskstats .
 
 It is obvious that tsar's monitoring of processes, IO, and CPU relies on /proc file system. 
 
-When the information provided by /proc file system is from host machines, these monitorings cannot monitor the information in the container. To satisfy business demand to appropriate container monitoring, it is even nessary to develop another set of monitoring tools specifically for a container. This issue will, in nature, stall or even obstruct the containerization of enterprise existing business. Therefore, container technology must be compatible with existing monitoring tools to avoid new tools development and preserve nice user interface that customs to Engineers' user habits. 
+When the information provided by /proc file system is from host machines, these monitorings cannot monitor the information in the container. To satisfy business demand to appropriate container monitoring, it is even nessary to develop another set of monitoring tools specifically for a container. This issue will, in nature, stall or even obstruct the containerization of existing enterprise business. Therefore, container technology must be compatible with existing monitoring tools to avoid new tools development and accustoms to Engineers' user habits. 
 
-PouchContainer is a tool that supports LXCFS and capable of getting rid of issues listed above. PouchContainer resolves listed issues by transparentizing the monitoring and operational tools that depend on /proc file system deployed in the container or on the host. Existing monitoring and operational tools will be able to transition into container to achieve in-container monitoring and operations without appropriating structure or re-developing tools.
+PouchContainer is a tool that supports LXCFS and capable of getting rid of issues listed above. PouchContainer resolves listed issues by transparentizing the monitoring and maintenence tools that depend on /proc file system deployed in the container or on the host. Existing monitoring and maintenence tools will be able to transition into containers to achieve in-container monitoring and operations without appropriating structure or re-developing tools.
 
 Next, let's see an example of installing PouchContainer 0.3.0 in Ubuntu:
 
@@ -102,19 +102,19 @@ Cached:                4 kB
 To obtain relative information in the container, use containers started by LXCFS and read in-container /proc files 
 
 ### Business Applications
-For most applications that heavily rely on the operation system, the startup program of applications needs to obtain information about the system's memory, CPU, and so on.
+For most applications that heavily rely on the operation system, the launch procedure of applications need to obtain information about the system's memory, CPU, and so on.
 When the '/proc' file in the container does not accurately reflect the resources condition of the container, it will cause significant effects to above applications.
 
-For example, when some Java applications dynamically allocate the stack size of the running program by checking /proc/meminfo and the container memory limit is less than the host memory, program startup failure will appear because of failed memory allocation.
+For example, when some Java applications dynamically allocate the stack size of the running program by checking /proc/meminfo in launch script. When the container memory limit is less than the host memory, programs will fail to launch due to failed memory allocation.
 
-For DPDK related applications, the application tools needs to get CPU information and the CPU logic core used by initialization in the EAL layer from /proc/cpuinfo. 
-If the above information cannot be accurately obtained in the container, the DPDK application needs to modify the corresponding tool.
+For DPDK related applications, the application tools need to get CPU information and the CPU logic core used by initialization in the EAL layer from /proc/cpuinfo. 
+If the above information cannot be accurately obtained in the container, the DPDK application needs to modify the corresponding tools.
 
 
 ## PouchContainer integrated LXCFS
 PouchContainer supports LXCFS from version 0.1.0, please check this instance:[https://github.com/alibaba/pouch/pull/502](https://github.com/alibaba/pouch/pull/502) 
 
-In short, when the container starts, it will through -v mount the mount point of LXCFS on the host  /var/lib/lxc/lxcfs/proc/  to the virtual filesystem directory  /proc inside the container. 
+In short, when the container starts, it will mount the mount point of LXCFS on the host  /var/lib/lxc/lxcfs/proc/ through -v to the virtual filesystem directory /proc inside the container. 
 
 At this point you can see in the /proc directory of the container, some proc files include meminfo, uptime, swaps, stat, diskstats, cpuinfo and so on.
 The parameters are as follows:
@@ -130,14 +130,14 @@ The parameters are as follows:
 -v /var/lib/lxc/lxcfs/proc/cpuinfo:/proc/cpuinfo
 ```
 
-To simplify usage, the pouch create and run command lines provide parameters  `--enableLxcfs`. If specify above parameters when you are creating the container, you can omit the complicated `-v` parameters.
+To simplify usage, the pouch creates and runs command lines to provide parameters  `--enableLxcfs`. If the above parameters are specified when you are creating the container, you can omit the complicated `-v` parameters.
 
 After a period of using and testing, we found after lxcfs restarts, proc and cgroup will be rebuilt. That will cause a `connect failed` error when users access /proc in the container.
 
-In order to enhance the stability of LXCFS, in pull request:[https://github.com/alibaba/pouch/pull/885](https://github.com/alibaba/pouch/pull/885) ,refined the management method of LXCFS by systemd guarantee. In order to do that, use remote operation by adding ExecStartPost to lxcfs.service, traverse LXCFS container, and mount again in the container.
+In order to enhance the stability of LXCFS, in pull request:[https://github.com/alibaba/pouch/pull/885](https://github.com/alibaba/pouch/pull/885) , the management method of refining LXCFS is now guaranteed by systemd. In order to achieve this, use remote operation by adding ExecStartPost to lxcfs.service, traverse LXCFS container, and then mount again in the container.
 
 ## Summary
 
-PouchContainer supports LXCFS implement view isolation for /proc filesystems within containers which will reduce the original tool chain as well as operation and maintenance habits in the process of enterprise storage application containerization, and speed up the process. PouchContainer will support enterprises strongly for the smooth transition from traditional virtualization to container virtualization.
+PouchContainer supports using LXCFS to implement view isolation for /proc filesystems within containers. This will reduce the original tool chains as well as operation and maintenance habits in the containerization process of enterprise storage applications, and speed up the process itself. PouchContainer will provide strong support to enterprises for the smooth transition from traditional virtualization to container virtualization.
 
 
