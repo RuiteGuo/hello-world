@@ -3,11 +3,11 @@ origin doc link ：https://github.com/pouchcontainer/blog/blob/master/blog-cn/Po
 # PouchContainer supporting LXCFS to achieve high-reliability container isolation
 
 ## Introduction
-PouchContainer is an open-source runtime container software developed by Alibaba. The latest released version is 0.3.0, located at [https://github.com/alibaba/pouch](https://github.com/alibaba/pouch). PouchContainer is designed to support LXCFS to realize highly reliable container separation. While Linux adopted cgroup technology to achieve resource separation, this solution still causes problem. For example, because host machine's file system usually still stays mounting in container, users will obtain host information instead of actual informations when trying to read files in /proc/meminfo/. The lack of `/proc view isolation` will cause a series of problems and then further stalls or obstructs enterprise business containerization. LXCFS ([https://github.com/lxc/lxcfs](https://github.com/lxc/lxcfs)) is an open-source FUSE file system solution for resolving `/proc view isolation` issue, making the container acting more like a traditional virtual machine in the presentation layer. This article will first introduce the appropriate business scene for LXCFS and then introduce how LXCFS works in PouchContainer. 
+PouchContainer is an open-source runtime container software developed by Alibaba. The latest released version is 0.3.0, located at [https://github.com/alibaba/pouch](https://github.com/alibaba/pouch). PouchContainer is designed to support LXCFS to realize highly reliable container separation. While Linux adopted cgroup technology to achieve resource separation, this solution still causes problem. For example, because host machine's file system usually still stays mounting in container, users will obtain host information instead of actual informations when trying to read files in /proc/meminfo/. The lack of `/proc view isolation` will cause a series of problems and then further stalls or obstructs enterprise business containerization. LXCFS ([https://github.com/lxc/lxcfs](https://github.com/lxc/lxcfs)) is an open-source FUSE file system solution for resolving `/proc view isolation` issue, making the container acting more like a traditional virtual machine in the presentation layer. This article will first introduce the appropriate business scenario for LXCFS and then introduce how LXCFS works in PouchContainer. 
 
 
-## LXCFS Business Scene
-In the age of physical machine and virtual machine, Alibaba developed an internal toolbox including compiler packing, application deployment, and unified monitoring. These tools have been providing stable services for applications that deploy physical machines and virtual machines. 
+## LXCFS Business Scenario
+In the age of physical machine and virtual machine, Alibaba developed an internal toolbox including compiling, packing, application deployment, and unified monitoring. These tools have been providing stable services for applications that are deployed in physical machines and virtual machines. Next, we present how LXCFS works in the containerization process from monitoring, operations, and applications deployment aspects in detail. 
 
 
 ### Monitoring and Operational tools
@@ -99,10 +99,10 @@ Cached:                4 kB
 / # cat /proc/uptime
 10.00 10.00
 ```
-To obtain relative information in container, use containers started by LXCFS and read in-container /proc files 
+To obtain relative information in the container, use containers started by LXCFS and read in-container /proc files 
 
 ### Business Applications
-For most applications which are relied heavily on the operation system, the startup program of applications needs to obtain information about the system's memory, CPU, and so on.
+For most applications that heavily rely on the operation system, the startup program of applications needs to obtain information about the system's memory, CPU, and so on.
 When the '/proc' file in the container does not accurately reflect the resources condition of the container, it will cause significant effects to above applications.
 
 For example, when some Java applications dynamically allocate the stack size of the running program by checking /proc/meminfo and the container memory limit is less than the host memory, program startup failure will appear because of failed memory allocation.
