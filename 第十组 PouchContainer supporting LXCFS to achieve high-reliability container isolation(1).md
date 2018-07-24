@@ -3,7 +3,7 @@ origin doc link ：https://github.com/pouchcontainer/blog/blob/master/blog-cn/Po
 # PouchContainer supporting LXCFS to achieve high-reliability container isolation
 
 ## Introduction
-PouchContainer is an open-source runtime container software developed by Alibaba. The latest released version is 0.3.0, located at [https://github.com/alibaba/pouch](https://github.com/alibaba/pouch). PouchContainer is designed to support LXCFS to realize highly reliable container separation. While Linux adopted cgroup technology to achieve resource separation, this solution still causes problem. For example, because host machine's file system usually still stays mounting in container, users will obtain host information instead of actual informations when trying to read files in /proc/meminfo/. The lack of `/proc view isolation` will cause a series of problems and then further stalls or obstructs enterprise business containerization. LXCFS ([https://github.com/lxc/lxcfs](https://github.com/lxc/lxcfs)) is an open-source file system solution for resolving `/proc view isolation` issue, making the container acting like a traditional virtual machine in the presentation layer. This article will first introduce the appropriate business scene for LXCFS and then introduce how LXCFS works in PouchContainer. 
+PouchContainer is an open-source runtime container software developed by Alibaba. The latest released version is 0.3.0, located at [https://github.com/alibaba/pouch](https://github.com/alibaba/pouch). PouchContainer is designed to support LXCFS to realize highly reliable container separation. While Linux adopted cgroup technology to achieve resource separation, this solution still causes problem. For example, because host machine's file system usually still stays mounting in container, users will obtain host information instead of actual informations when trying to read files in /proc/meminfo/. The lack of `/proc view isolation` will cause a series of problems and then further stalls or obstructs enterprise business containerization. LXCFS ([https://github.com/lxc/lxcfs](https://github.com/lxc/lxcfs)) is an open-source FUSE file system solution for resolving `/proc view isolation` issue, making the container acting like a traditional virtual machine in the presentation layer. This article will first introduce the appropriate business scene for LXCFS and then introduce how LXCFS works in PouchContainer. 
 
 
 ## LXCFS Business Scene
@@ -11,7 +11,7 @@ In the age of physical machine and virtual machine, Alibaba developed an interna
 
 
 ### Monitoring and Operational tools
-Most monitoring tools rely on the /proc file system to retrieve system information. In the example of Alibaba, part of the infrastructural monitoring tools collect informations through tsar（[https://github.com/alibaba/tsar](https://github.com/alibaba/tsar)). However, collecting memory and CPU information in tsar depends on /proc file system. We can download tsar source code to learn how tsar uses files under /proc. 
+Most monitoring tools rely on the /proc file system to retrieve system information. In the example of Alibaba's monitoring system, part of the infrastructural monitoring tools collect informations through tsar（[https://github.com/alibaba/tsar](https://github.com/alibaba/tsar)). However, collecting memory and CPU information in tsar depends on /proc file system. We can download tsar source code to learn how tsar uses files under /proc. 
 
 ```
 $ git remote -v
@@ -22,26 +22,26 @@ $ grep -r cpuinfo .
 :tsar letty$ grep -r meminfo .
 ./include/define.h:#define MEMINFO "/proc/meminfo"
 ./include/public.h:#define MEMINFO "/proc/meminfo"
-./info.md:内存的计数器在/proc/meminfo,里面有一些关键项
+./info.md:memory counter is in /proc/meminfo,there are some key elements
 ./modules/mod_proc.c:    /* read total mem from /proc/meminfo */
 ./modules/mod_proc.c:    fp = fopen("/proc/meminfo", "r");
 ./modules/mod_swap.c: * Read swapping statistics from /proc/vmstat & /proc/meminfo.
 ./modules/mod_swap.c:    /* read /proc/meminfo */
 $ grep -r diskstats .
 ./include/public.h:#define DISKSTATS "/proc/diskstats"
-./info.md:IO的计数器文件是:/proc/diskstats,比如:
+./info.md:IO Counter is :/proc/diskstats, for example:
 ./modules/mod_io.c:#define IO_FILE "/proc/diskstats"
 ./modules/mod_io.c:FILE *iofp;                     /* /proc/diskstats*/
 ./modules/mod_io.c:    handle_error("Can't open /proc/diskstats", !iofp);
 ```
 
-It is obvious that tsar's monitoring of process, IO, and cpu relies on /proc file system. 
+It is obvious that tsar's monitoring of processes, IO, and CPU relies on /proc file system. 
 
-When the information provided by /proc file system is from host machine, these monitorings cannot monitor the information in container. To satisfy business demand to appropriate container monitoring, it is even nessary to develop another set of monitoring tools specifically for a container. This issue will, in nature, stall or even obstruct the containerization of enterprise existing business. Therefore, container technology must have the compatibility of original existing monitoring tools to avoid develop new tools everytime and preserve nice user interface that customs to Engineers' user habits. 
+When the information provided by /proc file system is from host machines, these monitorings cannot monitor the information in the container. To satisfy business demand to appropriate container monitoring, it is even nessary to develop another set of monitoring tools specifically for a container. This issue will, in nature, stall or even obstruct the containerization of enterprise existing business. Therefore, container technology must be compatible with existing monitoring tools to avoid new tools development and preserve nice user interface that customs to Engineers' user habits. 
 
-PouchContainer is a tool that support LXCFS and get rid of issues listed above. PouchContainer resolves listed issues by transparentizing the monitoring and operational tools that depend on /proc file system deployed in container or on the host. Existing monitoring and operational tools will be able to transition into container to achieve in-container monitoring and operations without appropriating structure or re-developing.
+PouchContainer is a tool that supports LXCFS and capable of getting rid of issues listed above. PouchContainer resolves listed issues by transparentizing the monitoring and operational tools that depend on /proc file system deployed in the container or on the host. Existing monitoring and operational tools will be able to transition into container to achieve in-container monitoring and operations without appropriating structure or re-developing tools.
 
-Next, let's see from an example of installing PouchContainer 0.3.0 in Ubuntu:
+Next, let's see an example of installing PouchContainer 0.3.0 in Ubuntu:
 
 
 
@@ -71,7 +71,7 @@ Cached:           433928 kB
 / # cat /proc/uptime
 2594376.56 2208749.32
 ```
-It is obvious to see the consistency between the outputs from /proc/meminfo、uptime files and those from the host machine. Although we designated 50 M memory in start time, /proc/meminfo files does not demonstrate the memory limit in containers. 
+It is obvious to see the consistency between the outputs from /proc/meminfo、uptime files and those from the host machine. Although we designated 50 M memory in start time, /proc/meminfo files does not demonstrate the memory limit in the container. 
 
 Starting LXCFS service inside the host machine, manually invoking pouchd process and designating related relative LXCFS parameters:
 
@@ -99,8 +99,7 @@ Cached:                4 kB
 / # cat /proc/uptime
 10.00 10.00
 ```
-
-Using LXCFS started container and reading in-container /proc files to obtain relative information in container.
+To obtain relative information in container, use containers started by LXCFS and read in-container /proc files 
 
 ### Business Applications
 For most applications which are relied heavily on the operation system, the startup program of applications needs to obtain information about the system's memory, CPU, and so on.
